@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>File Upload</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #d4471a;
+    --line: #1a1a1a;
+    --card: #ffffff;
+    --success: #2d6a3e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0,0,0,0.06) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    padding: 48px 40px;
+    position: relative;
+    box-shadow: 8px 8px 0 var(--ink);
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1.5px solid var(--ink);
+    padding-bottom: 16px;
+    margin-bottom: 36px;
+  }
+
+  .header .label {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .header .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 38px;
+    line-height: 1.1;
+    margin-bottom: 14px;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  /* ---- View states ---- */
+  .view { display: none; }
+  .view.active { display: block; animation: fadeIn 0.4s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---- Upload zone ---- */
+  .drop-zone {
+    border: 1.5px dashed var(--ink);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+    margin-bottom: 24px;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    background: var(--bg);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .drop-zone svg {
+    margin-bottom: 16px;
+  }
+
+  .drop-zone .primary {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .drop-zone .secondary {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  #fileInput { display: none; }
+
+  .file-info {
+    background: var(--bg);
+    border: 1px solid var(--ink);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+
+  .file-info.show { display: flex; }
+
+  .file-info .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 70%;
+  }
+
+  .file-info .size {
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    width: 100%;
+    padding: 16px;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: translate(-3px, -3px);
+    box-shadow: 3px 3px 0 var(--accent);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn.secondary {
+    background: transparent;
+    color: var(--ink);
+    margin-top: 12px;
+  }
+
+  /* ---- Loading ---- */
+  .loading-wrap {
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .spinner {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 28px;
+    position: relative;
+  }
+
+  .spinner::before, .spinner::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    animation: spin 1.2s linear infinite;
+  }
+
+  .spinner::after {
+    inset: 8px;
+    border-color: var(--accent);
+    border-right-color: transparent;
+    border-top-color: transparent;
+    animation-duration: 0.8s;
+    animation-direction: reverse;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .loading-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .loading-sub::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+
+  /* ---- Success ---- */
+  .check {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 24px;
+    border: 1.5px solid var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+
+  .check svg {
+    stroke: var(--success);
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .check svg path {
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: draw 0.5s 0.3s ease forwards;
+  }
+
+  @keyframes draw {
+    to { stroke-dashoffset: 0; }
+  }
+
+  .success-title {
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+
+  .success-msg {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  /* ---- Error ---- */
+  .error-box {
+    background: #fde8e2;
+    border: 1px solid var(--accent);
+    padding: 14px 16px;
+    font-size: 12px;
+    margin-bottom: 20px;
+    color: var(--accent);
+    display: none;
+  }
+
+  .error-box.show { display: block; }
+
+  .footer-mark {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <span class="label"><span class="dot"></span>File Transfer</span>
+        <span class="label" id="statusLabel">Ready</span>
+      </div>
+
+      <!-- UPLOAD VIEW -->
+      <div class="view active" id="view-upload">
+        <h1>Upload your file</h1>
+        <p class="subtitle">Select or drop a file below. It will be sent to the processing endpoint once you confirm.</p>
+
+        <div class="drop-zone" id="dropZone">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div class="primary">Drop a file here</div>
+          <div class="secondary">or click to browse</div>
+        </div>
+
+        <input type="file" id="fileInput" />
+
+        <div class="file-info" id="fileInfo">
+          <span class="name" id="fileName"></span>
+          <span class="size" id="fileSize"></span>
+        </div>
+
+        <div class="error-box" id="errorBox"></div>
+
+        <button class="btn" id="uploadBtn" disabled>Send file</button>
+      </div>
+
+      <!-- LOADING VIEW -->
+      <div class="view" id="view-loading">
+        <div class="loading-wrap">
+          <div class="spinner"></div>
+          <div class="loading-text">Sending your file</div>
+          <div class="loading-sub">Please wait</div>
+        </div>
+      </div>
+
+      <!-- SUCCESS VIEW -->
+      <div class="view" id="view-success">
+        <div class="check">
+          <svg width="32" height="32" viewBox="0 0 24 24">
+            <path d="M5 12 L10 17 L19 7" />
+          </svg>
+        </div>
+        <div class="success-title">All done</div>
+        <div class="success-msg">Your file was sent successfully.</div>
+        <button class="btn secondary" id="resetBtn">Upload another file</button>
+      </div>
+    </div>
+
+    <div class="footer-mark">— Endpoint Ready —</div>
+  </div>
+
+<script>
+  const ENDPOINT = 'https://hook.eu1.make.celonis.com/adsnlwmsda5yf3rjp5qu99b29e1gyrp9';
+
+  const dropZone   = document.getElementById('dropZone');
+  const fileInput  = document.getElementById('fileInput');
+  const fileInfo   = document.getElementById('fileInfo');
+  const fileName   = document.getElementById('fileName');
+  const fileSize   = document.getElementById('fileSize');
+  const uploadBtn  = document.getElementById('uploadBtn');
+  const errorBox   = document.getElementById('errorBox');
+  const statusLbl  = document.getElementById('statusLabel');
+  const resetBtn   = document.getElementById('resetBtn');
+
+  let selectedFile = null;
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    statusLbl.textContent = ({
+      upload: 'Ready',
+      loading: 'Uploading',
+      success: 'Complete'
+    })[name];
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function setFile(file) {
+    selectedFile = file;
+    fileName.textContent = file.name;
+    fileSize.textContent = formatSize(file.size);
+    fileInfo.classList.add('show');
+    uploadBtn.disabled = false;
+    errorBox.classList.remove('show');
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
+
+  ['dragenter', 'dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    })
+  );
+
+  ['dragleave', 'drop'].forEach(ev =>
+    dropZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+    })
+  );
+
+  dropZone.addEventListener('drop', (e) => {
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+
+  uploadBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    showView('loading');
+
+    const formData = new FormData();
+    formData.append('file1', selectedFile, selectedFile.name);
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error('Server responded with status ' + res.status);
+      }
+
+      showView('success');
+    } catch (err) {
+      showView('upload');
+      errorBox.textContent = 'Upload failed: ' + err.message;
+      errorBox.classList.add('show');
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    selectedFile = null;
+    fileInput.value = '';
+    fileInfo.classList.remove('show');
+    uploadBtn.disabled = true;
+    showView('upload');
+  });
+</script>
+</body>
+</html>
